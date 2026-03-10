@@ -1,0 +1,201 @@
+= Synthèse technique
+
+== 1. Réglementation NF525 et conception fonctionnelle
+
+La norme NF525 (logiciels de caisse) impose un contrôle strict de l'intégrité, de l'authentification et de la traçabilité des transactions. Cela influence WebCaisse en exigeant :
+
+* Un historique inviolable des ventes
+* L'enregistrement obligatoire de tous les changements
+* Une identification univoque des opérateurs
+* Des mécanismes de journalisation garantissant la non-répudiation
+
+== 2. Faille de confidentialité : identifiants en clair
+
+L'envoi d'identifiants par messagerie en clair est critique car :
+
+* Interception réseau : tout attaquant en position intermédiaire peut capturer les données
+* Absence de chiffrement : aucune protection cryptographique
+* Absence d'authentification : impossible de vérifier l'émetteur
+* Conformité : viole les exigences légales (RGPD, NF525)
+
+Solution :
+
+* Utiliser HTTPS/TLS
+* Chiffrer les données sensibles
+* Implémenter une authentification multifacteur
+
+== 3. Structure de la table FormuleSouscrite et historique
+
+La structure initiale ne permettait pas l'historique car :
+
+* Pas de champ timestamp pour tracer les modifications
+* Pas de colonne de version ou de date de validité
+* Écrasement des données anciennes à chaque changement
+
+Solution :
+
+* Ajouter `date_debut`
+* Ajouter `date_fin`
+* Ajouter `version`
+
+Cela permet de constituer un historique complet.
+
+== 4. Intérêt d'un Trigger pour la traçabilité
+
+Un Trigger SQL assure la traçabilité en :
+
+* Automatisant l'enregistrement des changements sans intervention applicative
+* Garantissant l'exécution à chaque modification (impossible à contourner)
+* Horodatant les changements au niveau base de données
+* Isolant la logique métier de la traçabilité
+* Créant une immuabilité des enregistrements d'audit
+
+== 5. Différence WHERE vs HAVING
+
+[cols="1,1,2"]
+|===
+|Aspect |WHERE |HAVING
+
+|Exécution
+|Avant le `GROUP BY`
+|Après le `GROUP BY`
+
+|Portée
+|Filtre les lignes individuelles
+|Filtre les groupes agrégés
+
+|Utilisation
+|Critères sur colonnes simples
+|Critères sur fonctions agrégées (`SUM`, `COUNT`, `AVG`)
+
+|Exemple
+|`WHERE montant > 100`
+|`HAVING COUNT(*) > 5`
+|===
+
+== 6. Injection SQL via concaténation
+
+Exemple d'exploitation :
+
+[source,java]
+----
+/* DANGEREUX - Concaténation directe */
+String query = "SELECT * FROM clients WHERE name = '" + userInput + "'";
+
+/* Si userInput = "' OR '1'='1", la requête devient :
+   SELECT * FROM clients WHERE name = '' OR '1'='1'
+   Retourne TOUS les clients !
+*/
+----
+
+== 7. Avantages de PreparedStatement
+
+[cols="1,3"]
+|===
+|Avantage |Détail
+
+|Sécurité
+|Sépare code et données, élimine l'injection SQL
+
+|Performance
+|Compilation et optimisation par la BD une seule fois
+
+|Remplacement sûr
+|Paramètres liés correctement sans interprétation de syntaxe
+
+|Lisibilité
+|Code plus clair avec `?` comme placeholders
+
+|Portabilité
+|Fonctionne sur différents dialectes SQL
+|===
+
+Exemple :
+
+[source,java]
+----
+/* SÛR - PreparedStatement */
+PreparedStatement pst = connection.prepareStatement(
+    "SELECT * FROM clients WHERE name = ?"
+);
+
+pst.setString(1, userInput); // jamais interprété comme code SQL
+----
+
+== 8. Intérêt et critique de instanceof
+
+*Intérêt :*
+
+* Permettre le polymorphisme en distinguant les types réels (`VenteMagasin`, `VenteEcommerce`, etc.)
+* Adapter le traitement selon le type de vente
+
+*Critique :*
+
+* Violation du polymorphisme : devrait utiliser des méthodes virtuelles
+* Fragile : ajouter un nouveau type oblige à modifier le code
+* Maintenabilité : risque de code difficile à maintenir
+
+Solution :
+
+* Pattern Strategy
+* Héritage polymorphe
+
+== 9. Gestion de la division par zéro
+
+Crucial pour le calcul de l'indice :
+
+[source,java]
+----
+try {
+    double indice = venteMois / venteMoisPrecedent;
+} catch (ArithmeticException e) {
+    // gérer le cas : indice = 0, 1 (neutre) ou valeur spéciale
+}
+----
+
+Raisons :
+
+* Prévention du crash : sans gestion, l'application plante
+* Logique métier : vente précédente à 0 = croissance infinie
+* Robustesse : application résiliente aux données dégénérées
+* Logging : tracer les anomalies pour audit
+
+== 10. Rôle de Launcher et Main en JavaFX
+
+[cols="1,3"]
+|===
+|Classe |Rôle
+
+|Launcher
+|Point d'entrée de la JVM, lance l'application
+
+|Main (`extends Application`)
+|Gère l'interface JavaFX
+|===
+
+Exemple :
+
+[source,java]
+----
+/* Launcher.java */
+public class Launcher {
+    public static void main(String[] args) {
+        Application.launch(Main.class, args);
+    }
+}
+
+/* Main.java */
+public class Main extends Application {
+
+    @Override
+    public void start(Stage primaryStage) {
+        // Construire l'interface ici
+    }
+}
+----
+
+Avantages :
+
+* Séparation des responsabilités
+* Compatibilité avec les modules Java
+* Meilleure gestion des variables JavaFX
