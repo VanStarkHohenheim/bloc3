@@ -1,0 +1,444 @@
+=== Question 1.1 : Modélisation de la base de données
+
+*Proposition de schéma relationnel modifié :*
+
+[source,sql]
+----
+-- Table Client (existante, enrichie)
+Client(id, raisonSociale, rue, codePostal, ville, telephone, email, motDePasseHash, dateInscription)
+
+-- Nouvelle table PointDeVente (un client peut avoir plusieurs points de vente)
+PointDeVente(id, nomPointDeVente, adresse, #idClient)
+
+-- Table Formule (existante)
+Formule(id, libelle, prix, nbVendeursSimultanes)
+
+-- Nouvelle table Souscription (historisation des formules par point de vente)
+Souscription(id, dateDebut, dateFin, #idPointDeVente, #idFormule)
+
+-- Nouvelle table ProgrammeFidelite
+ProgrammeFidelite(id, libelle, typeProgramme) -- types: 'Tampon', 'Montant', 'Points'
+
+-- Association PointDeVente - ProgrammeFidelite (relation many-to-many)
+PointDeVente_Programme(id, #idPointDeVente, #idProgrammeFidelite, dateActivation)
+
+-- Nouvelle table Langue
+Langue(id, codeISO, libelle)
+
+-- Association PointDeVente - Langue (modules activés par langue)
+PointDeVente_Langue(id, #idPointDeVente, #idLangue, moduleActive)
+----
+
+*Diagramme de classes UML :*
+
+[source]
+----
+┌─────────────────┐       ┌──────────────────┐
+│     Client      │1     *│   PointDeVente   │
+├─────────────────┤◄──────├──────────────────┤
+│ -id             │       │ -id              │
+│ -raisonSociale  │       │ -nom             │
+│ -adresse        │       │ -adresse         │
+│ -email          │       │ -formuleActive   │
+│ -passwordHash   │       └────────┬─────────┘
+└─────────────────┘                │
+                                   │*
+                                   │
+                                   │1
+                          ┌────────▼─────────┐
+                          │    Souscription  │
+                          ├──────────────────┤
+                          │ -dateDebut       │
+                          │ -dateFin         │
+                          │ -formule         │
+                          └──────────────────┘
+----
+
+=== Question 1.2 : Audit de sécurité (DICP/RGPD)
+
+*Analyse de la faille :*  
+L'envoi d'identifiants et mot de passe par email viole plusieurs principes du DICP et du RGPD :
+
+[cols="1,3",options="header"]
+|===
+|Critère |Violation
+
+|Confidentialité
+|L'email transite en clair sur le réseau (interception possible)
+
+|Intégrité
+|Aucune garantie que le destinataire est bien le client légitime
+
+|Disponibilité
+|L'email peut être bloqué ou retardé
+
+|RGPD Art. 32
+|Mesures de sécurité inappropriées pour les données sensibles
+|===
+
+Nous générerons un token.
+
+*Processus d'inscription sécurisé :*
+
+[source,java]
+----
+Algorithme InscriptionSecurisee
+
+Début
+
+    -- 1. Saisie de l'email
+    lire email
+
+    -- 2. Génération d'un token unique
+    token ← générer_UUID()
+
+    -- 3. Hash du token et stockage
+    token_hash ← HASH(token)
+    expiration ← temps_actuel + 24h
+    stocker_en_base(email, token_hash, expiration)
+
+    -- 4. Envoi du mail avec lien sécurisé
+    lien ← "https://site.com/activation?token=" + token
+    envoyer_email(email, lien)
+
+Fin
+
+
+Algorithme VerificationToken(token_reçu)
+
+Début
+
+    token_hash ← HASH(token_reçu)
+    enregistrement ← rechercher_token(token_hash)
+
+    Si enregistrement existe ET temps_actuel < expiration Alors
+        rediriger_vers("formulaire_creation_mot_de_passe")
+    Sinon
+        afficher("Token invalide ou expiré")
+    FinSi
+
+Fin
+
+
+Algorithme CreationMotDePasse(mot_de_passe, token)
+
+Début
+
+    -- Hash sécurisé du mot de passe
+    mot_de_passe_hash ← ARGON2(mot_de_passe)
+
+    -- Stockage du mot de passe
+    mettre_a_jour_utilisateur(mot_de_passe_hash)
+
+    -- Invalidation du token
+    supprimer_token(token)
+
+    afficher("Compte activé avec succès")
+
+Fin
+----
+
+=== Question 1.3 : Analyse de la structure proposée
+
+*Problème de la table `FormuleSouscrite(idPointDeVente, idFormule)` :*
+
+Cette structure ne permet pas de gérer l'historique car :
+
+* La clé primaire composite empêche d'avoir plusieurs enregistrements pour le même couple (point de vente, formule)
+* Impossible de stocker les dates de début/fin d'activation
+* Impossible de calculer la durée d'activation pour la facturation
+* Pas de traçabilité temporelle
+
+=== Question 1.4 : Correction de la structure
+
+[source,sql]
+----
+-- Table corrigée avec historisation temporelle
+FormuleSouscrite(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    idPointDeVente INT NOT NULL,
+    idFormule INT NOT NULL,
+    dateDebut DATE NOT NULL,
+    dateFin DATE,
+    prixApplique DECIMAL(10,2),
+    FOREIGN KEY (idPointDeVente) REFERENCES PointDeVente(id),
+    FOREIGN KEY (idFormule) REFERENCES Formule(id),
+    CONSTRAINT chk_dates CHECK (dateFin IS NULL OR dateFin > dateDebut)
+);
+----
+
+=== Question 1.5 : Trigger SQL d'audit
+
+[source,sql]
+----
+DELIMITER //
+
+CREATE TRIGGER tg_audit_changement_formule
+BEFORE UPDATE ON FormuleSouscrite
+FOR EACH ROW
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM AuditChangementFormule 
+        WHERE idPointDeVente = NEW.idPointDeVente 
+        AND DATE(dateChangement) = CURDATE()
+    ) THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Erreur : Un seul changement de formule par jour autorisé';
+    END IF;
+    
+    IF OLD.dateFin IS NULL THEN
+        SET OLD.dateFin = CURDATE();
+    END IF;
+    
+    INSERT INTO AuditChangementFormule (
+        idPointDeVente,
+        ancienneFormule,
+        nouvelleFormule,
+        dateChangement,
+        utilisateur
+    ) VALUES (
+        OLD.idPointDeVente,
+        OLD.idFormule,
+        NEW.idFormule,
+        NOW(),
+        CURRENT_USER()
+    );
+END //
+
+DELIMITER ;
+----
+
+== Mission 2 : Fidélisation et Robustesse
+
+=== Question 2.1 : Requêtes SQL
+
+*a) Consommateurs avec au moins une vente en 2017 :*
+
+[source,sql]
+----
+SELECT DISTINCT c.nom, c.prenom, c.mail
+FROM Conso c
+JOIN Vente v ON c.id = v.idConso
+WHERE YEAR(v.dateVente) = 2017;
+----
+
+*b) Nombre de consommateurs fidélisés 18-30 ans :*
+
+[source,sql]
+----
+SELECT COUNT(*) as nbJeunesFideles
+FROM ConsoFidele cf
+JOIN Conso c ON cf.id = c.id
+WHERE TIMESTAMPDIFF(YEAR, cf.dateNaiss, CURDATE()) BETWEEN 18 AND 30;
+----
+
+*c) Montant total des ventes par consommateur :*
+
+[source,sql]
+----
+SELECT c.nom, c.prenom, COALESCE(SUM(v.montantVente), 0) as totalAchats
+FROM Conso c
+LEFT JOIN Vente v ON c.id = v.idConso
+GROUP BY c.id, c.nom, c.prenom;
+----
+
+=== Question 2.2 : Analyse de vulnérabilité (OWASP)
+
+*Faille identifiée :* Injection SQL (OWASP Top 10 - A03:2021)
+
+La concaténation de `seuilVentes` dans la requête SQL permet à un attaquant d'injecter du code SQL.
+
+Exemple d'attaque :  
+`1 OR 1=1 --`
+
+La requête devient :
+
+[source,sql]
+----
+having count(*) > 1 OR 1=1 --
+----
+
+=== Question 2.3 : Correction avec PreparedStatement
+
+[source,java]
+----
+public static ArrayList<Conso> listeConsoAFideliser(int seuilVentes,
+                                                     LocalDate dateDeb,
+                                                     LocalDate dateFin) {
+    ArrayList<Conso> lesConsos = new ArrayList<>();
+
+    String requete = "SELECT c.nom, c.prenom, c.tel, c.mail, COUNT(v.id) as nbVentes "
+                   + "FROM Conso c "
+                   + "JOIN Vente v ON c.id = v.idConso "
+                   + "WHERE c.id NOT IN (SELECT id FROM ConsoFidele) "
+                   + "AND v.dateVente BETWEEN ? AND ? "
+                   + "GROUP BY c.id, c.nom, c.prenom, c.tel, c.mail "
+                   + "HAVING COUNT(v.id) > ?";
+
+    try (Connection dbConnect = DriverManager.getConnection(DB_URL, USER, PASS);
+         PreparedStatement pstmt = dbConnect.prepareStatement(requete)) {
+
+        pstmt.setDate(1, java.sql.Date.valueOf(dateDeb));
+        pstmt.setDate(2, java.sql.Date.valueOf(dateFin));
+        pstmt.setInt(3, seuilVentes);
+
+        try (ResultSet res = pstmt.executeQuery()) {
+            while (res.next()) {
+                Conso leConso = new Conso(
+                    res.getString("nom"),
+                    res.getString("prenom"),
+                    res.getString("mail"),
+                    res.getString("tel"),
+                    res.getInt("nbVentes")
+                );
+                lesConsos.add(leConso);
+            }
+        }
+    } catch (SQLException e) {
+        System.err.println("Erreur SQL : " + e.getMessage());
+    }
+
+    return lesConsos;
+}
+----
+
+== Mission 3 : Statistiques (POO)
+
+=== Question 3.1 : Commentaire Javadoc
+
+[source,java]
+----
+/**
+ * Calcule le pourcentage de ventes réalisées par des consommateurs fidèles
+ * par rapport au total des ventes du jour.
+ *
+ * @param lesVentesDuJour Liste des ventes à analyser
+ * @return Pourcentage de ventes fidèles (0.0 à 100.0)
+ * @throws NullPointerException si lesVentesDuJour est null
+ */
+public static double statVente(ArrayList<Vente> lesVentesDuJour) {
+}
+----
+
+=== Question 3.2 : Méthode getNbVentes
+
+[source,java]
+----
+public int getNbVentes() {
+    if (lesVentes == null) {
+        return 0;
+    }
+    return lesVentes.size();
+}
+----
+
+=== Question 3.3 : Constructeur VenteEcommerce
+
+[source,java]
+----
+public class VenteEcommerce extends Vente {
+
+    private String adresseLivraison;
+    private String optionLivraison;
+
+    public VenteEcommerce(Date uneDateVente,
+                          Conso unConso,
+                          double unMontant,
+                          String adresseLivraison,
+                          String optionLivraison) {
+
+        super(uneDateVente, unConso, unMontant);
+
+        this.adresseLivraison = adresseLivraison;
+        this.optionLivraison = optionLivraison;
+    }
+}
+----
+
+=== Question 3.4 : Méthode compareLieuVente
+
+[source,java]
+----
+public static double compareLieuVente(ArrayList<ConsoFidele> lesConsos) {
+
+    double totalEcom = 0;
+    double totalMag = 0;
+
+    for (ConsoFidele cf : lesConsos) {
+
+        ArrayList<Vente> ventes = cf.getVentes();
+
+        for (Vente uneVente : ventes) {
+
+            if (uneVente instanceof VenteEcommerce) {
+                totalEcom += uneVente.getMontantVente();
+            }
+            else if (uneVente instanceof VenteMagasin) {
+                totalMag += uneVente.getMontantVente();
+            }
+        }
+    }
+
+    if (totalEcom == 0) {
+        return 0;
+    }
+
+    return totalMag / totalEcom;
+}
+----
+
+=== Question 3.5 : Robustesse - Division par zéro
+
+Danger : si `totalEcom = 0`, la division provoque une `ArithmeticException`.
+
+Correction :
+
+[source,java]
+----
+if (totalEcom == 0) {
+    throw new IllegalStateException(
+        "Impossible de calculer le ratio : aucune vente ecommerce enregistrée");
+}
+----
+
+ou
+
+[source,java]
+----
+return (totalEcom == 0) ? 0.0 : totalMag / totalEcom;
+----
+
+=== Question 3.6 : Filtrage des ventes
+
+[source,java]
+----
+public ArrayList<Vente> getVentesSuperieuresA(double seuil) {
+
+    ArrayList<Vente> resultat = new ArrayList<>();
+
+    if (lesVentes == null) {
+        return resultat;
+    }
+
+    for (Vente uneVente : lesVentes) {
+
+        if (uneVente.getMontantVente() > seuil) {
+            resultat.add(uneVente);
+        }
+    }
+
+    return resultat;
+}
+----
+
+Version Java moderne :
+
+[source,java]
+----
+public ArrayList<Vente> getVentesSuperieuresAStream(double seuil) {
+
+    return lesVentes.stream()
+        .filter(v -> v.getMontantVente() > seuil)
+        .collect(Collectors.toCollection(ArrayList::new));
+}
+----
