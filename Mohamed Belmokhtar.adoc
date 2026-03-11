@@ -1,0 +1,137 @@
+= Correction Personnalisée - TP Étude de Cas WebCaisse
+:author: Correction pour M. Belmokhtar
+:toc: left
+:toc-title: Sommaire
+:icons: font
+
+Bonjour M. Belmokhtar.
+
+Le travail fourni, réparti sur vos deux fichiers (`questionnaire-webcaisse.adoc` et `reponse.adoc`), est d'un très bon niveau technique. Le code Java est particulièrement robuste et vos réponses théoriques démontrent, si vous avez pris un peu de recul et que vous vous les êtes appropriées, une compréhension pointue des concepts d'architecture et de sécurité.
+
+Toutefois, quelques éléments sont manquants (les tests unitaires). Surtout, l'intégralité de ce travail écrit devra faire l'objet d'une validation orale stricte avec M. Robert. Cette étape est impérative pour confirmer l'acquisition de ces compétences et s'assurer qu'aucun outil de génération automatisée n'a remplacé votre propre réflexion.
+
+Voici le détail factuel de la correction.
+
+
+== Mission 1 : Souscription en ligne et Sécurité
+
+=== Question 1.1 — Proposition de structure de base de données
+**Votre proposition :** Schéma relationnel (SQL) et diagramme de classes UML.
+
+[WARNING]
+.Remarque - Modélisation incomplète
+====
+Votre proposition est très structurée et l'externalisation de la formule vers le `PointDeVente` est correcte. Cependant, il manque l'entité `Module` stipulée par l'énoncé. Vous avez ajouté `moduleActive` comme attribut dans la table d'association des langues, ce qui ne permet pas de gérer un catalogue de modules indépendants liés aux formules (via une table `Composer`).
+====
+
+=== Question 1.2 — Faille de l'envoi de mot de passe
+**Votre réponse :** Analyse DICP / RGPD sous forme de tableau. Proposition d'un algorithme complet de génération de token avec hachage Argon2.
+
+[NOTE]
+.Évaluation - Validé
+====
+L'analyse des risques est exhaustive. Le processus algorithmique proposé est d'un niveau professionnel et respecte scrupuleusement les standards actuels de cybersécurité.
+====
+
+=== Questions 1.3 et 1.4 — Historisation des formules
+**Votre réponse :** Diagnostic de la clé primaire composite bloquante. Création d'une nouvelle clé primaire (`id` auto-incrémenté) avec `dateDebut` et `dateFin`.
+
+[NOTE]
+.Évaluation - Conforme
+====
+Le diagnostic est exact et la solution technique retenue (ajout d'une clé artificielle pour supporter l'historique temporel) est la méthode recommandée.
+====
+
+=== Question 1.5 — Trigger SQL
+**Votre réponse :** Déclencheur `BEFORE UPDATE` avec vérification de changement unique par jour et insertion dans une table d'audit.
+
+[NOTE]
+.Évaluation - Validé
+====
+Votre code SQL va bien au-delà de la demande initiale. La gestion de la date de fin (`OLD.dateFin = CURDATE()`) et le contrôle d'occurrence journalière démontrent une très bonne maîtrise des déclencheurs de base de données.
+====
+
+== Mission 2 : Fidélisation des consommateurs et Robustesse
+
+=== Question 2.1 — Requêtes SQL
+**Vos requêtes :**
+
+[WARNING]
+.Remarque - Oubli mineur dans la requête c
+====
+* **Requêtes a et b :** Parfaites. L'utilisation de `DISTINCT` et `TIMESTAMPDIFF` est correcte.
+* **Requête c :** Incomplète. L'utilisation de `COALESCE` est une excellente initiative pour gérer les valeurs nulles, mais il manque l'attribut `c.mail` (le courriel) dans le `SELECT` et le `GROUP BY`, comme l'exigeait la consigne.
+====
+
+=== Questions 2.2 et 2.3 — Faille de sécurité (OWASP) et PreparedStatement
+**Votre réponse :** Identification de l'injection SQL. Code Java utilisant `PreparedStatement` et `try-with-resources`.
+
+[NOTE]
+.Évaluation - Validé
+====
+La faille est parfaitement expliquée. L'implémentation Java est excellente : l'usage du `try-with-resources` garantit la fermeture des connexions et la conversion des dates avec `java.sql.Date.valueOf()` est exacte.
+====
+
+=== Questions 2.4 et 2.5 — Tests unitaires (JUnit)
+[WARNING]
+.Erreur - Partie non rendue
+====
+Les méthodes de tests unitaires (`testInitConso` et `testAddMontant`) sont totalement absentes de votre fichier.
+====
+
+== Mission 3 : Statistiques de ventes (POO)
+
+=== Questions 3.1 à 3.3 — Javadoc, Méthodes et Constructeur
+**Votre réponse :** Javadoc rigoureuse, méthode `size()` avec contrôle de nullité, constructeur avec `super()`.
+
+[NOTE]
+.Évaluation - Validé
+====
+Code propre. L'ajout de conditions de garde (`if (lesVentes == null)`) prouve une bonne réflexion sur la robustesse logicielle.
+====
+
+=== Questions 3.4 et 3.5 — Polymorphisme et Robustesse
+**Votre réponse :** Utilisation de `instanceof` et parade contre la division par zéro (lancement d'une `IllegalStateException` ou condition ternaire).
+
+[NOTE]
+.Évaluation - Conforme
+====
+La logique algorithmique est exacte et la sécurisation du calcul mathématique est bien traitée.
+====
+
+=== Question 3.6 — Filtrage des ventes
+**Votre réponse :** Boucle standard de filtrage ET proposition d'une version moderne utilisant l'API Stream de Java 8.
+
+[NOTE]
+.Évaluation - Validé
+====
+L'algorithme de base est correct. La proposition supplémentaire avec `lesVentes.stream().filter(...)` montre une excellente connaissance des évolutions du langage Java.
+====
+
+---
+
+== Partie 3 : Questions de synthèse (Java, SQL et Sécurité)
+
+**Vos réponses :** Fichier `reponse.adoc` contenant l'analyse des 10 points (NF525, failles réseau, historique SQL, Triggers, PreparedStatement, limites de la POO, JavaFX...).
+
+[NOTE]
+.Évaluation - Très satisfaisant
+====
+La synthèse est structurée, technique et précise.
+
+* L'explication des risques d'interception SMTP (en clair) et la référence explicite aux protocoles sécurisés est juste.
+* La critique du mot-clé `instanceof` pointant la violation du polymorphisme et la proposition du "Pattern Strategy" ou de l'héritage polymorphe sont extrêmement pertinentes.
+* Le rôle de la classe `Launcher` en tant que point d'entrée hors module JavaFX est correctement décrit.
+====
+
+== Conclusion
+
+Note estimée : *18 / 20*
+
+Le travail rendu est rigoureux (code défensif, requêtes optimisées, connaissance approfondie de l'écosystème Java). L'omission des tests unitaires et la légère erreur de modélisation initiale vous empêchent d'atteindre la note maximale.
+
+Pour maintenir voire améliorer ce niveau de notation dans les prochains TP, vous devez impérativement :
+
+- Contacter M. Robert pour réaliser votre entretien oral de validation sur l'ensemble de ces points (au fur et à mesure)
+- Effectuer l'intégralité des missions
+- Continuer à réaliser les prototypes et à me les montrer
