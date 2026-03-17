@@ -1,0 +1,71 @@
+== Réponses
+
+=== 1. Traçabilité paillette
+
+Chaque paillette possède un identifiant unique  
+On enregistre les informations comme la date, le lot et le type  
+Toutes les actions sont gardées en mémoire (historique)  
+On peut relier la paillette à une visite pour assurer le suivi  
+
+=== 2. SQLite
+
+SQLite est une base de données légère  
+Elle ne nécessite pas de serveur  
+Elle est adaptée pour une application mobile  
+Les données sont stockées en local de façon rapide  
+
+=== 3. Risques smartphone perdu
+
+Une personne peut accéder aux données sensibles  
+Les identifiants peuvent être récupérés  
+Les données de localisation peuvent être consultées  
+Les données peuvent être extraites même après suppression  
+
+=== 4. Pas de stockage en clair
+
+Les mots de passe ne doivent jamais être stockés en clair  
+On utilise un hash sécurisé comme bcrypt ou Argon2  
+On ajoute un salt pour renforcer la sécurité  
+On peut utiliser des tokens pour sécuriser les sessions  
+
+=== 5. Attaque MITM
+
+L’attaquant intercepte les échanges entre client et serveur  
+Il peut récupérer les identifiants ou les tokens  
+Il peut modifier les données en transit  
+La protection se fait avec HTTPS et TLS  
+
+=== 6. Hibernate
+
+Hibernate permet de simplifier l’accès à la base de données  
+Il fait le lien entre les objets Java et les tables  
+Il évite d’écrire trop de requêtes SQL  
+Il gère automatiquement la persistance  
+
+=== 7. Surcharge méthode
+
+La surcharge permet d’avoir plusieurs méthodes avec le même nom  
+On peut adapter le calcul selon le type de visite  
+Cela rend le code plus flexible  
+Cela permet de mieux organiser les calculs  
+
+=== 8. @BeforeEach
+
+Cette annotation est utilisée avant chaque test  
+Elle permet d’initialiser les objets nécessaires  
+Elle remet l’état à zéro entre chaque test  
+Cela évite de répéter le même code  
+
+=== 9. Test visite vide
+
+Tester une visite sans acte est important  
+C’est un cas limite qui peut provoquer des erreurs  
+Cela permet de vérifier la robustesse du programme  
+Cela évite des bugs en production  
+
+=== 10. JavaFX + ApiService
+
+L’interface JavaFX appelle le service ApiService  
+ApiService envoie les requêtes HTTP au serveur  
+Les données sont récupérées puis affichées  
+Les erreurs sont gérées pour éviter les plantages  

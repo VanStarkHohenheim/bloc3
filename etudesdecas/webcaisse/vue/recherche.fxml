@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox xmlns:fx="http://javafx.com/fxml" 
+      fx:controller="webcaisse.controller.RechercheController"
+      spacing="10" padding="20">
+    
+    <Label text="Recherche des Consommateurs Réguliers">
+        <font>
+            <Font name="System Bold" size="18"/>
+        </font>
+    </Label>
+    
+    <GridPane vgap="10" hgap="10">
+        <Label text="Seuil de ventes :" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+        <TextField fx:id="txtSeuil" promptText="Ex: 2" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+        
+        <Label text="Date début :" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+        <DatePicker fx:id="dpDateDeb" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+        
+        <Label text="Date fin :" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+        <DatePicker fx:id="dpDateFin" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+        
+        <Button text="Rechercher" onAction="#handleRechercher" 
+                GridPane.rowIndex="3" GridPane.columnIndex="1"
+                style="-fx-background-color: #4CAF50; -fx-text-fill: white;"/>
+    </GridPane>
+    
+    <TableView fx:id="tableConsos" prefHeight="300">
+        <columns>
+            <TableColumn text="Nom" fx:id="colNom" prefWidth="100"/>
+            <TableColumn text="Prénom" fx:id="colPrenom" prefWidth="100"/>
+            <TableColumn text="Email" fx:id="colMail" prefWidth="200"/>
+            <TableColumn text="Téléphone" fx:id="colTel" prefWidth="120"/>
+            <TableColumn text="Nb Ventes" fx:id="colNbVentes" prefWidth="80"/>
+        </columns>
+    </TableView>
+    
+    <Label fx:id="lblStatus" text="Prêt"/>
+</VBox>

@@ -1,0 +1,285 @@
+= Réponses TP Coopain
+:author: VanStarkHohenheim
+:revnumber: 1.0
+:toc: left
+:toc-title: Table des matières
+
+== MISSION 1 - Gestion des demandes d'insémination
+
+=== Question 1.1 : Règle de gestion pour choisir une paillette
+
+**Réponse :**
+
+La requête montre que l’on sélectionne une paillette enrichie  
+Elle doit correspondre au taureau demandé  
+Le stock doit être disponible (au moins 1)  
+On choisit la plus ancienne date de collecte  
+
+Donc on utilise une logique FIFO : on prend le plus ancien lot  
+
+---
+
+=== Question 1.2 : Sources des données à imprimer sur une paillette
+
+**Réponse :**
+
+[cols="2,3,2", options="header"]
+|===
+| Information | Source | Table
+| Date de collecte | Date de production | Collecte
+| N° agrément | Valeur fixe | Constante
+| N° taureau | Identifiant | Taureau
+| Code barre | Combinaison de champs | Plusieurs tables
+| N° IE | Identifiant IE | Taureau
+| Quantième | Calcul sur date | Collecte
+| Numéro lot | Numéro du lot | Lot
+| Code race | Code référencé | Race
+| Nom taureau | Nom | Taureau
+|===
+
+---
+
+=== Question 1.3 : Requête SQL - Tarifs pour un taureau
+
+**Réponse :**
+
+[source,sql]
+----
+SELECT tp.libelle, t.prixPaillette
+FROM Tarif t
+JOIN TypePaillette tp ON t.idTypePaillette = tp.id
+WHERE t.idNationalTaureau = 'FR0103015562'
+ORDER BY tp.libelle;
+----
+
+---
+
+=== Question 1.4 : Requête SQL - Liste des taureaux triés par stock
+
+**Réponse :**
+
+[source,sql]
+----
+SELECT 
+    t.idNational,
+    t.nom,
+    SUM(l.stockRestant) AS stockTotal
+FROM Taureau t
+LEFT JOIN Lot l ON t.idNational = l.idNationalTaureau
+GROUP BY t.idNational, t.nom
+ORDER BY stockTotal ASC;
+----
+
+---
+
+=== Question 1.5 : Schéma de données pour la gestion des demandes
+
+**Réponse :**
+
+On ajoute plusieurs entités pour gérer les demandes  
+
+- Vache (identifiant, nom, lien avec adhérent)  
+- DemandeInsemination (date, vache, taureau, etc.)  
+- Inseminateur (infos + secteur + véhicule)  
+- Secteur (zone géographique)  
+- Vehicule (immat, modèle, date)  
+- Adherent (client)  
+
+Ces tables sont reliées entre elles pour suivre une demande complète  
+
+---
+
+== MISSION 2 - MobiSemin Android
+
+=== Question 2.1 : Scénarios d'erreur - Saisie de tournée
+
+**Réponse :**
+
+On ajoute des contrôles pour éviter les erreurs  
+
+Si la date est dans le futur → erreur  
+Si km fin < km début → erreur  
+Si km invalide → erreur  
+Si km = début → accepté (0 km)  
+Si saisie trop tardive → avertissement  
+
+---
+
+=== Question 2.2 : Compléter onCreate() - SQLite MobiDb
+
+**Réponse :**
+
+[source,java]
+----
+@Override
+public void onCreate(SQLiteDatabase db) {
+    String strReq = "CREATE TABLE inseminateur(id INTEGER PRIMARY KEY AUTOINCREMENT, nom TEXT, prenom TEXT)";
+    db.execSQL(strReq);
+
+    strReq = "CREATE TABLE vehicule(id INTEGER PRIMARY KEY AUTOINCREMENT, immat TEXT, marque TEXT, modele TEXT, dateAchat TEXT)";
+    db.execSQL(strReq);
+
+    strReq = "CREATE TABLE histoKm(id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, kmDebut INTEGER, kmFin INTEGER, idInsemin INTEGER, idVehicule INTEGER, FOREIGN KEY(idInsemin) REFERENCES inseminateur(id), FOREIGN KEY(idVehicule) REFERENCES vehicule(id))";
+    db.execSQL(strReq);
+}
+----
+
+---
+
+=== Question 2.3 : Analyse DICP - Risques en cas de perte/vol
+
+**Réponse :**
+
+Confidentialité :  
+Les données peuvent être consultées (clients, tournées)  
+La localisation peut être récupérée  
+
+Intégrité :  
+Les données peuvent être modifiées  
+Risque de fraude ou erreurs  
+
+Solutions : chiffrement, authentification, logs  
+
+---
+
+=== Question 2.4 : Vulnérabilité OWASP - Stockage du mot de passe
+
+**Réponse :**
+
+Le mot de passe ne doit pas être stocké en clair  
+Sinon il peut être facilement récupéré  
+
+Il faut utiliser :  
+- un hash sécurisé (bcrypt, Argon2)  
+- des tokens pour les sessions  
+- HTTPS pour la transmission  
+
+---
+
+== MISSION 3 - Gestion des tournées
+
+=== Question 3.1.1 : Surcharge de méthode (Polymorphisme)
+
+**Réponse :**
+
+La surcharge permet d’avoir plusieurs méthodes avec le même nom  
+Mais avec des paramètres différents  
+
+Le compilateur choisit la bonne version selon l’appel  
+
+---
+
+=== Question 3.1.2 : Méthode getCoordGPS()
+
+**Réponse :**
+
+[source,java]
+----
+public String getCoordGPS() {
+    return latitude + " " + longitude;
+}
+----
+
+---
+
+=== Question 3.1.3 : Méthode getAdherents()
+
+**Réponse :**
+
+[source,java]
+----
+public ArrayList<Adherent> getAdherents() {
+    ArrayList<Adherent> adherentsUniques = new ArrayList<>();
+    
+    for(Visite v : laTournee.getLesVisites()) {
+        Adherent adh = v.getLeAdherent();
+        
+        if(!adherentsUniques.contains(adh)) {
+            adherentsUniques.add(adh);
+        }
+    }
+    
+    return adherentsUniques;
+}
+----
+
+---
+
+=== Question 3.1.4 : Méthode montantAFacturer()
+
+**Réponse :**
+
+[source,java]
+----
+public float montantAFacturer() {
+    float total = 0;
+    
+    for(PrestationVisite pv : lesPrestationsVisite) {
+        total += pv.getNombreActes() * pv.getLeTypePrestation().getPrixForfaitaire();
+    }
+    
+    return total;
+}
+----
+
+---
+
+=== Question 3.2 : Tests unitaires JUnit
+
+**Réponse :**
+
+[source,java]
+----
+@Before
+public void setUp() throws Exception {
+    tp1 = new TypePrestation("Insémination", 100);
+    tp2 = new TypePrestation("Echographie", 10);
+
+    t1 = new Tournee(...);
+    gt = new GestionTournee(t1);
+
+    v1 = new Visite(...);
+    v1.ajouterPrestationVisite(tp1, 3);
+    v1.ajouterPrestationVisite(tp2, 1);
+
+    v2 = new Visite(...);
+    v2.ajouterPrestationVisite(tp1, 1);
+}
+
+@Test
+public void testCATournee() {
+    assertEquals(0, gt.CATournee(), 0.01);
+
+    gt.ajouterVisite(v1);
+    assertEquals(310.0f, gt.CATournee(), 0.01);
+
+    gt.ajouterVisite(v2);
+    assertEquals(410.0f, gt.CATournee(), 0.01);
+}
+----
+
+---
+
+=== Question 3.3 : Attaque API - Synchronisation des tournées
+
+**Réponse :**
+
+Une attaque possible est le Man-in-the-Middle  
+
+L’attaquant intercepte les données  
+Il peut modifier les kilomètres ou horaires  
+Il peut aussi injecter du SQL  
+
+Solutions :  
+- HTTPS obligatoire  
+- validation côté serveur  
+- requêtes préparées  
+- signature des données  
+
+---
+
+== MISSION 4 - Bac à Sable
+
+Prototype à faire avec JavaFX, Hibernate et JUnit  
+
+voir /CoopainFX
