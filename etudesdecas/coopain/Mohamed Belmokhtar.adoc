@@ -1,0 +1,132 @@
+= Correction Personnalisée - TP Étude de Cas Coopain
+:author: Correction pour M. Mohamed Belmokhtar
+:toc: left
+:toc-title: Sommaire
+:icons: font
+
+Bonjour M. Belmokhtar.
+
+Le travail fourni sur l'étude de cas Coopain (soumis sous le pseudonyme "VanStarkHohenheim") est techniquement solide sur les parties SQL et Java. L'algorithmique et les requêtes sont maîtrisées. Cependant, la copie manque de rigueur sur l'analyse conceptuelle (modélisation, dictionnaire des données).
+
+La synthèse me plait car on ne voit pas trop l'impact de l'IA, elle semble avoir été un peu digérée.
+
+En interrogation orale les tests unitaires ne sont pas assez bien maitrisés.
+
+Voici le détail factuel de la correction.
+
+---
+
+== Mission 1 : Gestion des demandes d'insémination
+
+=== Question 1.1 — Règle de gestion
+**Votre réponse :** Logique FIFO (le plus ancien lot) avec condition de stock (au moins 1).
+
+[NOTE]
+.Évaluation - Validé
+====
+La déduction de la règle métier est correcte et complète.
+====
+
+=== Question 1.2 — Provenance des informations
+**Votre réponse :** Tableau listant grossièrement les sources ("Combinaison de champs", "Calcul sur date").
+
+[WARNING]
+.Remarque - Manque de précision
+====
+Votre analyse est beaucoup trop superficielle pour une épreuve de BTS. Il fallait identifier précisément les attributs sources (ex: `Collecte.date`, `Taureau.numeroIE`) et détailler les transformations techniques (ex: concaténation au format 128 CRT, calcul de l'écart en jours depuis 2002).
+====
+
+=== Questions 1.3 et 1.4 — Requêtes SQL (Tarifs et Stocks)
+**Votre réponse :** Requêtes avec `JOIN` et `LEFT JOIN`.
+
+[NOTE]
+.Évaluation - Validé
+====
+Les syntaxes SQL sont exactes.
+Pour la question 1.4, l'utilisation du `LEFT JOIN` pour le calcul du stock total est une excellente pratique. Cela permet de conserver dans l'affichage les taureaux dont le stock est tombé à zéro, contrairement à un `INNER JOIN` classique. À reproduire en Edc BTS.
+====
+
+=== Question 1.5 — Modèle relationnel
+**Votre réponse :** Liste textuelle des entités (Vache, DemandeInsemination, Inseminateur, Secteur, etc.) avec une description vague de leurs liens.
+
+[WARNING]
+.Erreur - Formalisme manquant
+====
+Une simple liste n'est pas un schéma relationnel. Il faut impérativement détailler les attributs et formaliser les contraintes d'intégrité (souligner les clés primaires, utiliser le symbole `#` pour les clés étrangères) afin de lier techniquement la demande à l'adhérent, à la vache et au lot.
+====
+
+== Mission 2 : Nouvelles fonctionnalités (MobiSemin)
+
+=== Question 2.1 — Scénarios d'erreur
+**Votre réponse :** Incohérences kilométriques, dates dans le futur, etc.
+
+[NOTE]
+.Évaluation - Conforme
+====
+Les scénarios de contrôles de saisie proposés sont pertinents et couvrent bien les risques métiers.
+====
+
+=== Question 2.2 — Base de données SQLite (`onCreate`)
+**Votre réponse :** Instructions `CREATE TABLE` pour `histoKm`.
+
+[NOTE]
+.Évaluation - Validé
+====
+La structure des tables respecte la syntaxe SQLite. La déclaration des contraintes de clés étrangères (`FOREIGN KEY`) pour `histoKm` est correcte.
+====
+
+=== Questions 2.3 et 2.4 — Cybersécurité (DICP et OWASP)
+**Votre réponse :** Risques de modification et lecture. Solutions : chiffrement, hash sécurisé (bcrypt), tokens, HTTPS.
+
+[NOTE]
+.Évaluation - Validé
+====
+L'analyse des risques locaux et réseau est factuelle. Les solutions de remédiation (hachage, HTTPS, jetons) sont conformes aux standards professionnels attendus.
+====
+
+== Mission 3 : Gestion des tournées des inséminateurs
+
+=== Question 3.1 — Programmation Orientée Objet
+**Vos réponses :** Surcharge, `getCoordGPS`, `getAdherents` et `montantAFacturer`.
+
+[NOTE]
+.Évaluation - Validé
+====
+* **Surcharge :** La définition technique est exacte.
+* **Algorithmique :** Le contrôle des doublons via `!adherentsUniques.contains(adh)` dans `getAdherents` est bien implémenté. À reproduire en Edc BTS.
+* **Navigation inter-classes :** Le calcul du montant (`nbActes * prixForfaitaire`) est correct.
+====
+
+=== Question 3.2 — Tests unitaires (JUnit)
+**Votre réponse :** Classe de test avec `@Before` et vérifications `assertEquals` avec un delta de `0.01`.
+
+[NOTE]
+.Évaluation - Conforme
+====
+Le scénario de test itératif est parfaitement respecté. L'utilisation du delta (`0.01`) pour tester l'égalité de types flottants démontre une bonne maîtrise du framework JUnit.
+====
+
+=== Question 3.3 — Cybersécurité des API (MITM)
+**Votre réponse :** Attaque Man-in-the-Middle et protection via HTTPS obligatoire.
+
+[NOTE]
+.Évaluation - Validé
+====
+Le mécanisme d'interception et le protocole cryptographique sont correctement identifiés.
+====
+
+---
+
+== Missions 4, 5 et Questions de synthèse
+
+
+====
+
+== Conclusion
+
+Note estimée : **17 / 20**
+
+Le code (SQL, Java, JUnit) produit dans ce compte rendu est juste techniquement. La note est toutefois plafonnée par le manque de rigueur sur la modélisation de base de données (Q1.2, Q1.5).
+
+En études de cas vous allez avoir du mal à reproduire des notes élevées si vous ne maitrisez pas les fondamentaux par écrit.
+
